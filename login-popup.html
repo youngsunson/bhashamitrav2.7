@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Google Login</title>
+    <!-- অফিস এবং ফায়ারবেস স্ক্রিপ্ট -->
+    <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAkB9KKJNHS_Fnv1QR-NjIBVTp8V5xxSRg",
+            authDomain: "bhashamitra-auth.firebaseapp.com",
+            projectId: "bhashamitra-auth",
+            storageBucket: "bhashamitra-auth.firebasestorage.app",
+            messagingSenderId: "638249991236",
+            appId: "1:638249991236:web:e8620af758bf9468115011",
+            measurementId: "G-X6Y4JEMD6G"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        Office.onReady(() => {
+            // ১. পেজ লোড হলে চেক করা হবে গুগল থেকে রিডাইরেক্ট হয়ে ফিরে এসেছে কিনা
+            getRedirectResult(auth)
+                .then((result) => {
+                    if (result) {
+                        // যদি লগইন সফল হয়ে ফিরে আসে
+                        console.log("Login Successful via Redirect!");
+                        Office.context.ui.messageParent(JSON.stringify({ status: 'success' }));
+                    } else {
+                        // ২. যদি কোনো রেজাল্ট না থাকে (মানে কেবল ডায়ালগ খুলল), তাহলে লগইন শুরু করো
+                        // এখানে আমরা পপআপের বদলে রিডাইরেক্ট ব্যবহার করছি
+                        signInWithRedirect(auth, provider);
+                    }
+                })
+                .catch((error) => {
+                    console.error(error);
+                    // এরর হলে প্যারেন্টকে জানানো হবে
+                    Office.context.ui.messageParent(JSON.stringify({ status: 'error', message: error.message }));
+                });
+        });
+    </script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; background: #f3f4f6; margin: 0; }
+        .loader { border: 4px solid #e5e7eb; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        h3 { color: #374151; margin-bottom: 5px; }
+        p { font-size: 12px; color: #6b7280; max-width: 80%; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <h3>অপেক্ষা করুন...</h3>
+    <p>আপনাকে Google লগইন পেজে নিয়ে যাওয়া হচ্ছে। দয়া করে উইন্ডোটি বন্ধ করবেন না।</p>
+</body>
+</html>
