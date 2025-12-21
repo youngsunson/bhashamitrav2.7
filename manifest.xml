@@ -25,6 +25,10 @@
     <AppDomain>https://youngsunson.github.io</AppDomain>
     <!-- Domain required for Gemini API calls -->
     <AppDomain>https://generativelanguage.googleapis.com</AppDomain>
+    <!-- ফায়ারবেস অথেনটিকেশন ডোমেইন -->
+    <AppDomain>https://bhashamitra-auth.firebaseapp.com</AppDomain>
+    <!-- গুগল অ্যাকাউন্টস -->
+    <AppDomain>https://accounts.google.com</AppDomain>
   </AppDomains>
   
   <Hosts>
