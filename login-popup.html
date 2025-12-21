@@ -2,13 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Login</title>
-    <!-- অফিস এবং ফায়ারবেস স্ক্রিপ্ট -->
+    <!-- Office JS -->
     <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+    
+    <!-- Firebase SDK via CDN -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+        // আপনার কনফিগারেশন
         const firebaseConfig = {
             apiKey: "AIzaSyAkB9KKJNHS_Fnv1QR-NjIBVTp8V5xxSRg",
             authDomain: "bhashamitra-auth.firebaseapp.com",
@@ -24,37 +28,82 @@
         const provider = new GoogleAuthProvider();
 
         Office.onReady(() => {
-            // ১. পেজ লোড হলে চেক করা হবে গুগল থেকে রিডাইরেক্ট হয়ে ফিরে এসেছে কিনা
-            getRedirectResult(auth)
-                .then((result) => {
-                    if (result) {
-                        // যদি লগইন সফল হয়ে ফিরে আসে
-                        console.log("Login Successful via Redirect!");
-                        Office.context.ui.messageParent(JSON.stringify({ status: 'success' }));
-                    } else {
-                        // ২. যদি কোনো রেজাল্ট না থাকে (মানে কেবল ডায়ালগ খুলল), তাহলে লগইন শুরু করো
-                        // এখানে আমরা পপআপের বদলে রিডাইরেক্ট ব্যবহার করছি
-                        signInWithRedirect(auth, provider);
-                    }
-                })
-                .catch((error) => {
-                    console.error(error);
-                    // এরর হলে প্যারেন্টকে জানানো হবে
-                    Office.context.ui.messageParent(JSON.stringify({ status: 'error', message: error.message }));
-                });
+            const loginBtn = document.getElementById("loginBtn");
+            const statusText = document.getElementById("status");
+
+            loginBtn.onclick = () => {
+                statusText.innerText = "পপআপ খোলা হচ্ছে...";
+                
+                // বাটনে ক্লিকের মাধ্যমে পপআপ কল করায় 'Missing Initial State' এরর হবে না
+                signInWithPopup(auth, provider)
+                    .then((result) => {
+                        statusText.innerText = "লগইন সফল! উইন্ডো বন্ধ হচ্ছে...";
+                        // সফল হলে মেইন অ্যাপকে মেসেজ পাঠানো
+                        Office.context.ui.messageParent(JSON.stringify({ status: 'success', email: result.user.email }));
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        statusText.innerText = "ত্রুটি: " + error.message;
+                        statusText.style.color = "red";
+                    });
+            };
         });
     </script>
+
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; background: #f3f4f6; margin: 0; }
-        .loader { border: 4px solid #e5e7eb; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin-bottom: 15px; }
-        h3 { color: #374151; margin-bottom: 5px; }
-        p { font-size: 12px; color: #6b7280; max-width: 80%; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f3f4f6;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 320px;
+        }
+        h2 { margin-top: 0; color: #1f2937; font-size: 18px; }
+        p { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+        
+        button {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        button:hover { background: #f9fafb; border-color: #9ca3af; }
+        img { width: 18px; height: 18px; }
+        #status { margin-top: 15px; font-size: 12px; color: #059669; min-height: 20px; }
     </style>
 </head>
 <body>
-    <div class="loader"></div>
-    <h3>অপেক্ষা করুন...</h3>
-    <p>আপনাকে Google লগইন পেজে নিয়ে যাওয়া হচ্ছে। দয়া করে উইন্ডোটি বন্ধ করবেন না।</p>
+    <div class="container">
+        <h2>লগইন করুন</h2>
+        <p>Google অ্যাকাউন্টের মাধ্যমে লগইন করতে নিচের বাটনে ক্লিক করুন।</p>
+        
+        <button id="loginBtn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
+            Google দিয়ে চালিয়ে যান
+        </button>
+
+        <div id="status"></div>
+    </div>
 </body>
 </html>
