@@ -2,20 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Login</title>
-    <!-- Office JS -->
     <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
-    
-    <!-- Google Identity Services (GSI) -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // আপনার ফায়ারবেস কনফিগারেশন
+        // ১. কনফিগারেশন (আপনার ক্লায়েন্ট আইডি বসান)
+        const CLIENT_ID = "638249991236-i937ol4m3u0kbn8aqgsjpf47f9oims95.apps.googleusercontent.com"; // <--- এখানে আইডি বসান
+        
+        // আপনার গিটহাব পেজের পুরো লিংক (স্ল্যাশ সহ সঠিক হতে হবে)
+        const REDIRECT_URI = "https://youngsunson.github.io/bhashamitrav2.7/login-popup.html"; 
+
         const firebaseConfig = {
             apiKey: "AIzaSyAkB9KKJNHS_Fnv1QR-NjIBVTp8V5xxSRg",
             authDomain: "bhashamitra-auth.firebaseapp.com",
@@ -29,60 +27,76 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        // ==========================================
-        // ⚠️ আপনার ক্লায়েন্ট আইডি এখানে বসান
-        // ==========================================
-        const CLIENT_ID = "638249991236-i937ol4m3u0kbn8aqgsjpf47f9oims95.apps.googleusercontent.com"; 
-
-        window.handleGoogleLogin = function(response) {
-            const statusText = document.getElementById("status");
-            statusText.innerText = "যাচাই করা হচ্ছে...";
-
-            // ১. গুগল থেকে আইডি টোকেন পাওয়া গেছে
-            const idToken = response.credential;
-
-            // ২. সেই টোকেন দিয়ে ফায়ারবেসে ক্রেডেনশিয়াল তৈরি
-            const credential = GoogleAuthProvider.credential(idToken);
-
-            // ৩. ফায়ারবেসে ম্যানুয়ালি সাইন-ইন (কোনো পপআপ ছাড়াই)
-            signInWithCredential(auth, credential)
-                .then((result) => {
-                    statusText.innerText = "লগইন সফল!";
-                    statusText.style.color = "green";
-                    // মেইন অ্যাপে তথ্য পাঠানো
-                    Office.context.ui.messageParent(JSON.stringify({ status: 'success', email: result.user.email }));
-                })
-                .catch((error) => {
-                    console.error(error);
-                    statusText.innerText = "ফায়ারবেস ত্রুটি: " + error.message;
-                    statusText.style.color = "red";
-                });
-        };
-
         Office.onReady(() => {
-            // অফিস রেডি হলে গুগল বাটন ইনিশিয়ালাইজ করুন
-            if(window.google) {
-                google.accounts.id.initialize({
-                    client_id: CLIENT_ID,
-                    callback: window.handleGoogleLogin
-                });
-                
-                // গুগল বাটন রেন্ডার করা
-                google.accounts.id.renderButton(
-                    document.getElementById("googleBtnContainer"),
-                    { theme: "outline", size: "large", width: "250" } 
-                );
+            // ২. ইউআরএল থেকে টোকেন চেক করা (লগইন করে ফিরে আসার পর)
+            const hash = window.location.hash;
+            if (hash && hash.includes("id_token")) {
+                handleAuthResponse(hash);
+            } else {
+                // টোকেন না থাকলে লগইন বাটন দেখাও
+                document.getElementById("loginBtn").style.display = "flex";
+                document.getElementById("loader").style.display = "none";
             }
         });
-    </script>
 
+        // ৩. লগইন বাটনে ক্লিক করলে গুগলে পাঠানো
+        window.startLogin = function() {
+            // Google OAuth 2.0 URL তৈরি
+            const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth` +
+                `?client_id=${CLIENT_ID}` +
+                `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+                `&response_type=id_token` +
+                `&scope=openid%20profile%20email` +
+                `&nonce=${Date.now()}`; // Random value
+
+            // বর্তমান উইন্ডোতেই রিডাইরেক্ট হবে (কোনো পপআপ নয়)
+            window.location.href = oauthUrl;
+        };
+
+        // ৪. টোকেন পাওয়ার পর ফায়ারবেসে লগইন
+        function handleAuthResponse(hash) {
+            document.getElementById("status").innerText = "যাচাই করা হচ্ছে...";
+            document.getElementById("loader").style.display = "block";
+            document.getElementById("loginBtn").style.display = "none";
+
+            // URL Hash থেকে id_token বের করা
+            const params = new URLSearchParams(hash.substring(1)); // # বাদ দিয়ে
+            const idToken = params.get("id_token");
+
+            if (idToken) {
+                const credential = GoogleAuthProvider.credential(idToken);
+                
+                // ফায়ারবেসে সাইন-ইন
+                signInWithCredential(auth, credential)
+                    .then((result) => {
+                        document.getElementById("status").innerText = "লগইন সফল!";
+                        // মেইন অ্যাপে মেসেজ পাঠানো
+                        Office.context.ui.messageParent(JSON.stringify({ status: 'success', email: result.user.email }));
+                    })
+                    .catch((error) => {
+                        console.error(error);
+                        document.getElementById("status").innerText = "ত্রুটি: " + error.message;
+                    });
+            }
+        }
+    </script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
         .container { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 320px; }
         h2 { margin-top: 0; color: #1f2937; font-size: 18px; margin-bottom: 10px; }
         p { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
         #status { margin-top: 15px; font-size: 12px; font-weight: bold; min-height: 20px; color: #059669; }
-        #googleBtnContainer { display: flex; justify-content: center; }
+        
+        button {
+            background: white; color: #374151; border: 1px solid #d1d5db; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;
+            display: none; /* ডিফল্টভাবে লুকানো */
+            align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.2s;
+        }
+        button:hover { background: #f9fafb; border-color: #9ca3af; }
+        img { width: 18px; height: 18px; }
+
+        .loader { border: 3px solid #f3f4f6; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -90,10 +104,14 @@
         <h2>স্বাগতম</h2>
         <p>Google অ্যাকাউন্টের মাধ্যমে লগইন করুন</p>
         
-        <!-- Google বাটন এখানে অটোমেটিক আসবে -->
-        <div id="googleBtnContainer"></div>
+        <div id="loader" class="loader"></div>
 
-        <div id="status"></div>
+        <button id="loginBtn" onclick="startLogin()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
+            Google দিয়ে চালিয়ে যান
+        </button>
+
+        <div id="status">লোড হচ্ছে...</div>
     </div>
 </body>
 </html>
