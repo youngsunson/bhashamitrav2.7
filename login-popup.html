@@ -7,12 +7,15 @@
     <!-- Office JS -->
     <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
     
-    <!-- Firebase SDK via CDN -->
+    <!-- Google Identity Services (GSI) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // আপনার কনফিগারেশন
+        // আপনার ফায়ারবেস কনফিগারেশন
         const firebaseConfig = {
             apiKey: "AIzaSyAkB9KKJNHS_Fnv1QR-NjIBVTp8V5xxSRg",
             authDomain: "bhashamitra-auth.firebaseapp.com",
@@ -25,83 +28,70 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
+
+        // ==========================================
+        // ⚠️ আপনার ক্লায়েন্ট আইডি এখানে বসান
+        // ==========================================
+        const CLIENT_ID = "638249991236-i937ol4m3u0kbn8aqgsjpf47f9oims95.apps.googleusercontent.com"; 
+
+        window.handleGoogleLogin = function(response) {
+            const statusText = document.getElementById("status");
+            statusText.innerText = "যাচাই করা হচ্ছে...";
+
+            // ১. গুগল থেকে আইডি টোকেন পাওয়া গেছে
+            const idToken = response.credential;
+
+            // ২. সেই টোকেন দিয়ে ফায়ারবেসে ক্রেডেনশিয়াল তৈরি
+            const credential = GoogleAuthProvider.credential(idToken);
+
+            // ৩. ফায়ারবেসে ম্যানুয়ালি সাইন-ইন (কোনো পপআপ ছাড়াই)
+            signInWithCredential(auth, credential)
+                .then((result) => {
+                    statusText.innerText = "লগইন সফল!";
+                    statusText.style.color = "green";
+                    // মেইন অ্যাপে তথ্য পাঠানো
+                    Office.context.ui.messageParent(JSON.stringify({ status: 'success', email: result.user.email }));
+                })
+                .catch((error) => {
+                    console.error(error);
+                    statusText.innerText = "ফায়ারবেস ত্রুটি: " + error.message;
+                    statusText.style.color = "red";
+                });
+        };
 
         Office.onReady(() => {
-            const loginBtn = document.getElementById("loginBtn");
-            const statusText = document.getElementById("status");
-
-            loginBtn.onclick = () => {
-                statusText.innerText = "পপআপ খোলা হচ্ছে...";
+            // অফিস রেডি হলে গুগল বাটন ইনিশিয়ালাইজ করুন
+            if(window.google) {
+                google.accounts.id.initialize({
+                    client_id: CLIENT_ID,
+                    callback: window.handleGoogleLogin
+                });
                 
-                // বাটনে ক্লিকের মাধ্যমে পপআপ কল করায় 'Missing Initial State' এরর হবে না
-                signInWithPopup(auth, provider)
-                    .then((result) => {
-                        statusText.innerText = "লগইন সফল! উইন্ডো বন্ধ হচ্ছে...";
-                        // সফল হলে মেইন অ্যাপকে মেসেজ পাঠানো
-                        Office.context.ui.messageParent(JSON.stringify({ status: 'success', email: result.user.email }));
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                        statusText.innerText = "ত্রুটি: " + error.message;
-                        statusText.style.color = "red";
-                    });
-            };
+                // গুগল বাটন রেন্ডার করা
+                google.accounts.id.renderButton(
+                    document.getElementById("googleBtnContainer"),
+                    { theme: "outline", size: "large", width: "250" } 
+                );
+            }
         });
     </script>
 
     <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #f3f4f6;
-            margin: 0;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            text-align: center;
-            width: 90%;
-            max-width: 320px;
-        }
-        h2 { margin-top: 0; color: #1f2937; font-size: 18px; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 320px; }
+        h2 { margin-top: 0; color: #1f2937; font-size: 18px; margin-bottom: 10px; }
         p { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
-        
-        button {
-            background: white;
-            color: #374151;
-            border: 1px solid #d1d5db;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            transition: all 0.2s;
-        }
-        button:hover { background: #f9fafb; border-color: #9ca3af; }
-        img { width: 18px; height: 18px; }
-        #status { margin-top: 15px; font-size: 12px; color: #059669; min-height: 20px; }
+        #status { margin-top: 15px; font-size: 12px; font-weight: bold; min-height: 20px; color: #059669; }
+        #googleBtnContainer { display: flex; justify-content: center; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>লগইন করুন</h2>
-        <p>Google অ্যাকাউন্টের মাধ্যমে লগইন করতে নিচের বাটনে ক্লিক করুন।</p>
+        <h2>স্বাগতম</h2>
+        <p>Google অ্যাকাউন্টের মাধ্যমে লগইন করুন</p>
         
-        <button id="loginBtn">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
-            Google দিয়ে চালিয়ে যান
-        </button>
+        <!-- Google বাটন এখানে অটোমেটিক আসবে -->
+        <div id="googleBtnContainer"></div>
 
         <div id="status"></div>
     </div>
