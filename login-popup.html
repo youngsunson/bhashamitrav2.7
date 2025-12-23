@@ -2,16 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Login</title>
+    
+    <!-- ফন্ট ইম্পোর্ট -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Office JS -->
     <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+    
+    <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        // ১. কনফিগারেশন (আপনার ক্লায়েন্ট আইডি বসান)
-        const CLIENT_ID = "638249991236-i937ol4m3u0kbn8aqgsjpf47f9oims95.apps.googleusercontent.com"; // <--- এখানে আইডি বসান
-        
-        // আপনার গিটহাব পেজের পুরো লিংক (স্ল্যাশ সহ সঠিক হতে হবে)
+        // ============================================================
+        // ⚠️ আপনার ক্লায়েন্ট আইডি এবং রিডাইরেক্ট ইউআরএল এখানে বসান
+        // ============================================================
+        const CLIENT_ID = "638249991236-i937ol4m3u0kbn8aqgsjpf47f9oims95.apps.googleusercontent.com"; 
         const REDIRECT_URI = "https://youngsunson.github.io/bhashamitrav2.7/login-popup.html"; 
 
         const firebaseConfig = {
@@ -28,90 +36,196 @@
         const auth = getAuth(app);
 
         Office.onReady(() => {
-            // ২. ইউআরএল থেকে টোকেন চেক করা (লগইন করে ফিরে আসার পর)
             const hash = window.location.hash;
             if (hash && hash.includes("id_token")) {
                 handleAuthResponse(hash);
             } else {
-                // টোকেন না থাকলে লগইন বাটন দেখাও
-                document.getElementById("loginBtn").style.display = "flex";
+                // টোকেন না থাকলে ইন্টারফেস দেখাও
+                document.querySelector('.card').style.opacity = '1';
                 document.getElementById("loader").style.display = "none";
             }
         });
 
-        // ৩. লগইন বাটনে ক্লিক করলে গুগলে পাঠানো
         window.startLogin = function() {
-            // Google OAuth 2.0 URL তৈরি
             const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth` +
                 `?client_id=${CLIENT_ID}` +
                 `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
                 `&response_type=id_token` +
                 `&scope=openid%20profile%20email` +
-                `&nonce=${Date.now()}`; // Random value
+                `&prompt=select_account` + 
+                `&nonce=${Date.now()}`;
 
-            // বর্তমান উইন্ডোতেই রিডাইরেক্ট হবে (কোনো পপআপ নয়)
             window.location.href = oauthUrl;
         };
 
-        // ৪. টোকেন পাওয়ার পর ফায়ারবেসে লগইন
         function handleAuthResponse(hash) {
-            document.getElementById("status").innerText = "যাচাই করা হচ্ছে...";
-            document.getElementById("loader").style.display = "block";
-            document.getElementById("loginBtn").style.display = "none";
+            // লোডিং স্টেট দেখানো
+            document.querySelector('.card').style.display = 'none';
+            document.getElementById("full-page-loader").style.display = 'flex';
+            document.getElementById("status-text").innerText = "যাচাই করা হচ্ছে...";
 
-            // URL Hash থেকে id_token বের করা
-            const params = new URLSearchParams(hash.substring(1)); // # বাদ দিয়ে
+            const params = new URLSearchParams(hash.substring(1));
             const idToken = params.get("id_token");
 
             if (idToken) {
                 const credential = GoogleAuthProvider.credential(idToken);
-                
-                // ফায়ারবেসে সাইন-ইন
                 signInWithCredential(auth, credential)
                     .then((result) => {
-                        document.getElementById("status").innerText = "লগইন সফল!";
-                        // মেইন অ্যাপে মেসেজ পাঠানো
+                        document.getElementById("status-text").innerText = "লগইন সফল!";
                         Office.context.ui.messageParent(JSON.stringify({ status: 'success', email: result.user.email }));
                     })
                     .catch((error) => {
                         console.error(error);
-                        document.getElementById("status").innerText = "ত্রুটি: " + error.message;
+                        document.getElementById("status-text").innerText = "ত্রুটি: " + error.message;
+                        document.getElementById("status-text").style.color = "#ef4444";
                     });
             }
         }
     </script>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
-        .container { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 320px; }
-        h2 { margin-top: 0; color: #1f2937; font-size: 18px; margin-bottom: 10px; }
-        p { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
-        #status { margin-top: 15px; font-size: 12px; font-weight: bold; min-height: 20px; color: #059669; }
-        
-        button {
-            background: white; color: #374151; border: 1px solid #d1d5db; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;
-            display: none; /* ডিফল্টভাবে লুকানো */
-            align-items: center; justify-content: center; gap: 10px; width: 100%; transition: all 0.2s;
-        }
-        button:hover { background: #f9fafb; border-color: #9ca3af; }
-        img { width: 18px; height: 18px; }
 
-        .loader { border: 3px solid #f3f4f6; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto; }
+    <style>
+        body {
+            font-family: 'Noto Sans Bengali', sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* একটি সুন্দর গ্রেডিয়েন্ট ব্যাকগ্রাউন্ড */
+            background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+            color: #1f2937;
+        }
+
+        .card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1); /* সফট শ্যাডো */
+            text-align: center;
+            width: 85%;
+            max-width: 380px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+            display: inline-block;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: #111827;
+        }
+
+        p {
+            font-size: 14px;
+            color: #6b7280;
+            margin: 0 0 30px 0;
+            line-height: 1.5;
+        }
+
+        /* আধুনিক গুগল বাটন ডিজাইন */
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .google-btn:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transform: translateY(-1px);
+        }
+
+        .google-btn:active {
+            transform: translateY(0);
+        }
+
+        .google-btn img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .footer {
+            margin-top: 24px;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        /* Full Page Loader Design */
+        #full-page-loader {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #4f46e5; /* Indigo color matches app theme */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #status-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: #4b5563;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>স্বাগতম</h2>
-        <p>Google অ্যাকাউন্টের মাধ্যমে লগইন করুন</p>
-        
-        <div id="loader" class="loader"></div>
 
-        <button id="loginBtn" onclick="startLogin()">
+    <!-- Main Login Card -->
+    <div class="card">
+        <div class="logo">🌟</div>
+        <h1>ভাষা মিত্রে স্বাগতম</h1>
+        <p>সাজেশন এবং সেভ করা ডিকশনারি পেতে<br>Google দিয়ে লগইন করুন</p>
+        
+        <!-- লোডার যখন পেজ প্রথম লোড হয় -->
+        <div id="loader" class="spinner" style="margin: 0 auto 20px auto;"></div>
+
+        <button id="loginBtn" class="google-btn" onclick="startLogin()">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
             Google দিয়ে চালিয়ে যান
         </button>
 
-        <div id="status">লোড হচ্ছে...</div>
+        <div class="footer">
+            Secure login provided by Google
+        </div>
     </div>
+
+    <!-- Processing State (After Login) -->
+    <div id="full-page-loader">
+        <div class="spinner"></div>
+        <div id="status-text">অপেক্ষা করুন...</div>
+    </div>
+
 </body>
 </html>
